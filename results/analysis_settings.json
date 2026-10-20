@@ -1,0 +1,77 @@
+{
+  "selected_channels": [
+    "C1 GFP",
+    "C4 RFP",
+    "C2 unknown"
+  ],
+  "thresholds_raw": {
+    "top": {
+      "C1 GFP": 10000,
+      "C4 RFP": 10000,
+      "C2 unknown": 5000,
+      "C3 DAPI": 0
+    },
+    "middle": {
+      "C1 GFP": 10000,
+      "C4 RFP": 10000,
+      "C2 unknown": 5000,
+      "C3 DAPI": 0
+    },
+    "bottom": {
+      "C1 GFP": 10000,
+      "C4 RFP": 10000,
+      "C2 unknown": 5000,
+      "C3 DAPI": 0
+    }
+  },
+  "regions": [
+    {
+      "id": "demo-left",
+      "plane": "middle",
+      "name": "Demo left rectangle",
+      "points": [
+        [
+          500,
+          500
+        ],
+        [
+          1200,
+          500
+        ],
+        [
+          1200,
+          1100
+        ],
+        [
+          500,
+          1100
+        ]
+      ]
+    },
+    {
+      "id": "demo-right",
+      "plane": "middle",
+      "name": "Demo right rectangle",
+      "points": [
+        [
+          1400,
+          200
+        ],
+        [
+          2000,
+          200
+        ],
+        [
+          2000,
+          650
+        ],
+        [
+          1400,
+          650
+        ]
+      ]
+    }
+  ],
+  "total_masks": 21480,
+  "passing_masks": 5222
+}
