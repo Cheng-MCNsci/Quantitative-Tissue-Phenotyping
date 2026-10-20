@@ -1,0 +1,44 @@
+{
+  "deepcell_inference_rerun": false,
+  "api_key_copied": false,
+  "versions": {
+    "numpy": "2.3.5",
+    "scipy": "1.18.1",
+    "skimage": "0.26.0",
+    "tifffile": "2026.10.15"
+  },
+  "planes": {
+    "top": {
+      "tissue_mask_pixel_equal": true,
+      "tissue_mask_differing_pixels": 0,
+      "tissue_threshold": 5642.462890625,
+      "recorded_threshold": 5642.462890625,
+      "final_label_count": 6847,
+      "recorded_final_count": 6847,
+      "archived_boundary_exclusions": 203,
+      "excluded_labels_absent": true
+    },
+    "middle": {
+      "tissue_mask_pixel_equal": true,
+      "tissue_mask_differing_pixels": 0,
+      "tissue_threshold": 5545.89404296875,
+      "recorded_threshold": 5545.8935546875,
+      "final_label_count": 7253,
+      "recorded_final_count": 7253,
+      "archived_boundary_exclusions": 192,
+      "excluded_labels_absent": true,
+      "core_pixel_equal": true,
+      "core_max_absolute_difference": 0.0
+    },
+    "bottom": {
+      "tissue_mask_pixel_equal": true,
+      "tissue_mask_differing_pixels": 0,
+      "tissue_threshold": 5300.22314453125,
+      "recorded_threshold": 5300.22314453125,
+      "final_label_count": 7380,
+      "recorded_final_count": 7380,
+      "archived_boundary_exclusions": 166,
+      "excluded_labels_absent": true
+    }
+  }
+}

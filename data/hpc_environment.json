@@ -1,0 +1,13 @@
+{
+  "python": "3.10.20",
+  "deepcell": "0.12.10",
+  "tensorflow": "2.8.4",
+  "gpu": "NVIDIA RTX 3090",
+  "jupyter_kernel_display_name": "DeepCell ICC GPU",
+  "jupyter_kernel_name": "deepcell_icc_gpu",
+  "application": "deepcell.applications.NuclearSegmentation",
+  "model_version": "1.1",
+  "model_mpp": 0.65,
+  "source": "Recovered notebook outputs; not a complete environment lock",
+  "inference_rerun_locally": false
+}

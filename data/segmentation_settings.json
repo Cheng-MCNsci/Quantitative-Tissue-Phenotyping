@@ -1,0 +1,53 @@
+{
+  "settings": {
+    "scale_factor": 3,
+    "tissue_smoothing_sigma_px": 12.0,
+    "tissue_threshold_multiplier": 0.5,
+    "tissue_closing_radius_px": 32,
+    "tissue_min_component_area_px": 5000,
+    "minimum_tissue_overlap": 0.5,
+    "boundary_band_px": 10,
+    "ring_inner_px": 2,
+    "ring_outer_px": 5,
+    "minimum_local_ratio": 1.2,
+    "pixel_size_um": 0.5546006944444444,
+    "model_mpp": 0.65,
+    "postprocessing": {
+      "radius": 10,
+      "maxima_threshold": 0.1,
+      "interior_threshold": 0.01,
+      "exclude_border": false,
+      "small_objects_threshold": 0,
+      "min_distance": 10
+    }
+  },
+  "summaries": {
+    "top": {
+      "initial_objects": 31580,
+      "after_tissue": 7050,
+      "boundary_excluded": 203,
+      "final_nuclei": 6847,
+      "tissue_coverage": 0.25848386503223186,
+      "tissue_threshold": 5642.462890625
+    },
+    "middle": {
+      "initial_objects": 32347,
+      "after_tissue": 7445,
+      "boundary_excluded": 192,
+      "final_nuclei": 7253,
+      "tissue_coverage": 0.2742222793259225,
+      "tissue_threshold": 5545.8935546875,
+      "reused_reviewed_result": true
+    },
+    "bottom": {
+      "initial_objects": 32161,
+      "after_tissue": 7546,
+      "boundary_excluded": 166,
+      "final_nuclei": 7380,
+      "tissue_coverage": 0.2745018495254048,
+      "tissue_threshold": 5300.22314453125
+    }
+  },
+  "nuclear_input": "saved core-enhanced C3 DAPI",
+  "scale_note": "3x resampling, image_mpp=model_mpp for experimental apparent nuclear size; output at original physical calibration"
+}

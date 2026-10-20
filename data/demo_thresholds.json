@@ -1,0 +1,32 @@
+{
+  "dataset": "wing-disc-v1-d36d0d87749d74cc",
+  "version": 1,
+  "description": "Demonstration cutoffs only. These do not reproduce the gates pictured in the supplied slides and are not biological positivity criteria.",
+  "selectedMarkers": [
+    "C1 GFP",
+    "C4 RFP",
+    "C2 unknown"
+  ],
+  "thresholdsRaw": {
+    "top": {
+      "C1 GFP": 10000,
+      "C4 RFP": 10000,
+      "C2 unknown": 5000,
+      "C3 DAPI": 0
+    },
+    "middle": {
+      "C1 GFP": 10000,
+      "C4 RFP": 10000,
+      "C2 unknown": 5000,
+      "C3 DAPI": 0
+    },
+    "bottom": {
+      "C1 GFP": 10000,
+      "C4 RFP": 10000,
+      "C2 unknown": 5000,
+      "C3 DAPI": 0
+    }
+  },
+  "scale": "raw",
+  "cofactor": 100
+}

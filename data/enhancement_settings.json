@@ -1,0 +1,47 @@
+{
+  "settings": {
+    "smoothing_sigma_px": 0.5,
+    "background_sigma_px": 12.0,
+    "core_sigma_px": 1.8
+  },
+  "xy_pixel_size_um": 0.5546006944444444,
+  "algorithm": "Gaussian smoothing; subtract Gaussian background; clip at zero; scale-normalized negative LoG; clip at zero",
+  "boundary_mode": "reflect (scipy default)",
+  "planes": [
+    {
+      "plane": "top",
+      "source": "top_Z28-Z29_4channels.tif",
+      "channel": "C3 DAPI",
+      "output": "top_DAPI_core_enhanced.tif",
+      "shape_yx": [
+        1152,
+        2189
+      ],
+      "dtype": "float32"
+    },
+    {
+      "plane": "middle",
+      "source": "middle_Z33-Z34_4channels.tif",
+      "channel": "C3 DAPI",
+      "output": "middle_DAPI_core_enhanced.tif",
+      "shape_yx": [
+        1152,
+        2189
+      ],
+      "dtype": "float32"
+    },
+    {
+      "plane": "bottom",
+      "source": "bottom_Z38-Z39_4channels.tif",
+      "channel": "C3 DAPI",
+      "output": "bottom_DAPI_core_enhanced.tif",
+      "shape_yx": [
+        1152,
+        2189
+      ],
+      "dtype": "float32"
+    }
+  ],
+  "purpose": "Candidate nuclear segmentation input; core response, not nuclear boundaries or raw fluorescence",
+  "raw_channels_modified": false
+}

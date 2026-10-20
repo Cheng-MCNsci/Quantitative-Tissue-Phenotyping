@@ -1,0 +1,23 @@
+{
+  "source_plane": "middle",
+  "crop_xywh": [
+    900,
+    620,
+    220,
+    180
+  ],
+  "pixel_size_um": 0.5546006944444444,
+  "retained_complete_nuclei": 416,
+  "partial_masks_excluded": true,
+  "channels": [
+    "C1 GFP",
+    "C2 unknown",
+    "C3 DAPI",
+    "C4 RFP"
+  ],
+  "purpose": "Small real-data measurement example; segmentation labels come from the original HPC run.",
+  "files": {
+    "middle_crop_raw.tif": "83decde4366fd9648ba1970b47e8d3e468259c2cfd4db4860c84db440f0e8779",
+    "middle_crop_labels.tif": "f99044f74f6933d8d67c72e5b9f0b3ba2945f82a8e314449b1e5a12f0da0b9c3"
+  }
+}

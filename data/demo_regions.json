@@ -1,0 +1,9 @@
+{
+  "dataset": "wing-disc-v1-d36d0d87749d74cc",
+  "version": 1,
+  "description": "Rectangles for a runnable code demonstration, not anatomical regions and not the freehand boundaries pictured in the slides.",
+  "regions": [
+    {"id":"demo-left","plane":"middle","name":"Demo left rectangle","points":[[500,500],[1200,500],[1200,1100],[500,1100]]},
+    {"id":"demo-right","plane":"middle","name":"Demo right rectangle","points":[[1400,200],[2000,200],[2000,650],[1400,650]]}
+  ]
+}
