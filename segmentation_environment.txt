@@ -1,0 +1,16 @@
+Original observed environment (not a complete lock file):
+Python 3.10.20
+DeepCell 0.12.10
+TensorFlow 2.8.4
+NVIDIA RTX 3090
+Jupyter kernel display name: DeepCell ICC GPU
+Jupyter kernel name: deepcell_icc_gpu
+NuclearSegmentation model version 1.1, model_mpp 0.65
+
+Use the original compatible UVA environment. Additional modules: numpy, scipy,
+scikit-image, tifffile, matplotlib. Their original versions were not recovered.
+The original Conda activation command, complete package lock, CUDA/cuDNN versions,
+GPU allocation and scheduler settings were not recovered. Select DeepCell ICC GPU
+in your existing UVA session. Run code/capture_deepcell_environment.py in that
+environment to save its package versions and GPU visibility without inference.
+Do not install this file with pip. No API key or model weights are bundled.

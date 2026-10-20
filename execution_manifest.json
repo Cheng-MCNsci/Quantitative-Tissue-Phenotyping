@@ -1,0 +1,42 @@
+{
+  "executed_code_cells": 10,
+  "source": "Guided_Tutorial.ipynb",
+  "segmentation_rerun": false,
+  "files": {
+    "acquisition_metadata.json": "6202178e2d17dbd5ba9b5d1b2161a3fed60270a8833b1d8558b15541d4c597db",
+    "segmentation_recovery_validation.json": "3f8a3581f5dc78181a8134f15e378b573ed42efaa8e75389eb580cab829fd61e",
+    "demo_regions.json": "17a3db8c7f2dfd2168c69d3fde35ab47b1b0bf408571e87fa4a9e5a58d857836",
+    "crop_manifest.json": "223c83781ed19f522abc0d1b5eef39a3c48b522afd3428b53889c144f5899094",
+    "middle_crop_raw.tif": "83decde4366fd9648ba1970b47e8d3e468259c2cfd4db4860c84db440f0e8779",
+    "nuclear_channel_means.csv": "737fce4af257b594a1850cbc3542bd920f441634f8f99ecea9f7d9d60a894241",
+    "original_script_manifest.json": "f534637b75d64196d39907c758f3dd8a49c2fcda545dfa20fe3b0eb01d7c90d5",
+    "hpc_environment.json": "23102573bfabf92abf0de08703b39bbe969958538a933c77fcd5020575737748",
+    "segmentation_settings.json": "6ca4b65952901b9efe05b7b25d2bf10d036a105ad45d0520db2908848916680a",
+    "middle_crop_labels.tif": "f99044f74f6933d8d67c72e5b9f0b3ba2945f82a8e314449b1e5a12f0da0b9c3",
+    "enhancement_settings.json": "6c71279b31bc0fc4e47162ef4b9276207aa0454f17d84db81aba112930c84fac",
+    "demo_thresholds.json": "bb2845156a4292c85ab13594e51d87da18fd7503bb8527a88c00493782824747"
+  },
+  "outputs": {
+    "crop_nuclei": 416,
+    "total_nuclei": 21480,
+    "passing_nuclei": 5222,
+    "region_summary": [
+      {
+        "plane": "middle",
+        "region_id": "demo-left",
+        "region": "Demo left rectangle",
+        "total_masks": 3693,
+        "above_threshold_masks": 1334,
+        "above_threshold_percent": 36.122393717844574
+      },
+      {
+        "plane": "middle",
+        "region_id": "demo-right",
+        "region": "Demo right rectangle",
+        "total_masks": 1143,
+        "above_threshold_masks": 312,
+        "above_threshold_percent": 27.296587926509186
+      }
+    ]
+  }
+}

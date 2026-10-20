@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quantitative Tissue Phenotyping</title><meta name="author" content="Yang Cheng"><meta name="description" content="Segmentation, marker quantification and anatomical-region analysis for tissue imaging, with a worked wing-disc example.">
+<link rel="stylesheet" href="style.css"></head><body>
+<a class="skip" href="#main">Skip to tutorial</a>
+<header><div class="nav-wrap"><a class="brand" href="#">Quantitative Tissue Phenotyping</a><nav aria-label="Main"><a href="#installation-and-example-files">Get started</a><a href="interface/index.html">Interface</a><a href="Guided_Tutorial.ipynb" download>Notebook</a><a href="https://github.com/Cheng-MCNsci/Quantitative-Tissue-Phenotyping/releases/download/v0.1.0/Quantitative_Tissue_Phenotyping_Tutorial.zip" download>Download example</a></nav></div></header>
+<div class="layout"><main id="main"><div class="eyebrow">PYTHON WORKFLOW · GUIDED TUTORIAL</div>
+<div class="meta">Updated 19 October 2026 · Real data · Executed example</div>
+<div class="downloads"><a href="START_HERE.html">Step-by-step instructions</a><a href="interface/index.html">Open interactive explorer</a><a href="Guided_Tutorial.ipynb" download>Measurement notebook</a><a href="Segmentation_Tutorial.ipynb" download>HPC segmentation notebook</a><a href="guided_analysis.py" download>Python script</a><a href="https://github.com/Cheng-MCNsci/Quantitative-Tissue-Phenotyping/releases/download/v0.1.0/Quantitative_Tissue_Phenotyping_Tutorial.zip" download>Code and data bundle</a></div>
+<h1 id="quantitative-tissue-phenotyping">Quantitative Tissue Phenotyping</h1>
+<p>Author and pipeline lead: Yang Cheng, University of Virginia (UVA), Christopher Deppmann and Melanie Worley laboratories.</p>
+<p>Developed with assistance from ChatGPT (OpenAI) in coding, documentation and tutorial preparation.</p>
+<p>Quantitative Tissue Phenotyping connects segmentation masks, per-object marker measurements and anatomical regions to characterize tissue phenotypes at single-cell resolution. It can be used with tissue immunofluorescence, fluorescence-based immunohistochemistry and HCR images when the images contain a suitable nuclear marker and aligned marker channels. A Drosophila wing disc with an ectopic structure serves as the worked example.</p>
+<h2 id="applications-and-scope">Applications and scope</h2>
+<p>The same image-and-mask workflow can quantify fluorescence from antibody staining or HCR within segmented nuclei or suitable whole-cell masks, then compare marker-positive populations across anatomical regions. The supplied example measures nuclear mean intensity; HCR puncta counting and transcript assignment would require additional analysis. Chromogenic immunohistochemistry would require stain-specific image preprocessing and validation before using the measurement workflow.</p>
+<p>The region selection, gating and spatial visualization could potentially be adapted for spatial-omics data with compatible per-cell measurements and registered spatial coordinates. Such an adaptation would require a data importer, appropriate normalization and validation for that assay. The current worked example demonstrates the workflow on wing-disc fluorescence images; it does not demonstrate a spatial-omics analysis.</p>
+<h2 id="why-this-pipeline-is-useful">Why this pipeline is useful</h2>
+<p>Tissue immunofluorescence images are often interpreted through qualitative observations of morphology and marker expression. Those observations reveal where a phenotype occurs, but systematic comparisons also require cell counts, marker measurements and a consistent definition of the anatomical region being compared. This pipeline provides a practical way to obtain those measurements while keeping each object linked to its position in the tissue.</p>
+<p>For example, it lets users ask: How many cells are GFP-positive in the original pouch, and how many are GFP-positive in the ectopic pouch? What fraction of the cells in each region passes the same GFP threshold? How does the distribution of GFP intensity differ between those regions?</p>
+<h2 id="what-the-pipeline-measures">What the pipeline measures</h2>
+<ol class="steps">
+<li>Segment individual nuclei using a nuclear marker such as DAPI. A nuclear channel is sufficient input for the nuclear-only workflow; additional marker channels can then be quantified within those masks.</li>
+<li>Measure the mean raw fluorescence intensity of every marker channel within each segmented nucleus, producing a table of marker abundance estimates for individual objects. With suitable whole-cell masks, the same measurement principle applies to cells. Fluorescence intensity is a relative readout of marker abundance within the measured compartment, rather than an absolute molecule count.</li>
+<li>Define anatomical regions by freehand drawing, count the segmented objects within each region, and retain their individual marker measurements. Marker thresholds identify positive populations and support regional counts and percentages, such as GFP-positive nuclei in the original versus ectopic pouch.</li>
+</ol>
+<p>The intended output is a set of quantitative phenotype descriptions: where marker-enriched cells are located, how many occur in each region, and how strongly individual nuclei or cells express the measured markers. Segmentation and gate choices should be checked against the images before interpreting these measurements.</p>
+<h2 id="nuclear-and-whole-cell-segmentation">Nuclear and whole-cell segmentation</h2>
+<p>In the supplied dataset, all four channels label nuclear signals: C1 GFP, C2 unidentified marker, C3 DAPI and C4 RFP. We therefore used DAPI alone as the segmentation input and measured all four raw channels within the resulting nuclear masks. In this example, a counted object is a segmented nucleus; no whole-cell boundary is inferred from these nuclear channels.</p>
+<p>With a nuclear marker plus a suitable membrane or cytoplasmic marker, an appropriate DeepCell application such as Mesmer can produce nuclear and whole-cell segmentations, allowing marker measurements in each compartment. The quality of the additional boundary signal and performance on the tissue must be checked. This capability is described in the <a href="https://deepcell.readthedocs.io/en/master/app-gallery/mesmer.html">DeepCell Mesmer documentation</a> and the <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC9010346/">Mesmer methods paper</a>. Whole-cell segmentation code is outside this nuclear-only worked example.</p>
+<p>The recorded analysis applied a pretrained DeepCell nuclear model and tuned preprocessing, input scale and filtering. It did not train a new model on annotated wing-disc images.</p>
+<h2 id="start-with-the-original-image-stack">Start with the original image stack</h2>
+<p>The source image, ectopic disc 2 (pdm2), is a four-channel Z-stack with 52 slices per channel. The embedded acquisition metadata records a 10× objective, specifically Plan-Apochromat 10x/0.45 M27, and a 2 µm interval between adjacent Z-slices. Each slice is 2189 × 1152 pixels, with an XY pixel size of approximately 0.5546 µm.</p>
+<p>The goal of plane selection is to sample representative tissue depths without collapsing the entire disc into one projection. We first chose a central tissue view that includes the intact wing disc and the ectopic structure, then selected equally spaced views above and below it. Here, “middle” refers to that anatomically selected reference view, rather than necessarily the numerical midpoint of the acquired stack.</p>
+<h2 id="prepare-three-representative-projections-in-fiji">Prepare three representative projections in FIJI</h2>
+<ol class="steps">
+<li>Open the original four-channel stack in FIJI and inspect the Z-slices. Identify a central reference view that captures the intact wing disc and ectopic structure while allowing individual nuclei to be resolved.</li>
+<li>Make a maximum-intensity projection of the two adjacent slices chosen for that reference view. For this example, the middle projection uses Z33–Z34, with slice numbers counted from 1.</li>
+<li>Select matching two-slice ranges at equal distances above and below the middle pair. This example uses Z28–Z29 for the top projection and Z38–Z39 for the bottom projection. Corresponding slices in neighboring pairs differ by five Z-steps, or 10 µm; the projection-pair midpoints are therefore also 10 µm apart.</li>
+<li>For each range, use Image &gt; Stacks &gt; Z Project in FIJI, set the start and stop slices, and choose Max Intensity. Apply the same slice range separately across all four channels, retaining a four-channel image rather than an RGB composite. Save each result as a separate TIFF with C = 4 and Z = 1, preserving the original bit depth and XY calibration.</li>
+</ol>
+<p>Each projection combines two adjacent slices sampled 2 µm apart. The result is three representative 2D views of this disc, not a 3D reconstruction. Use the same number of adjacent slices for all three projections and record their exact slice ranges. Select suitable reference depths for each new specimen rather than copying these numerical ranges automatically.</p>
+<figure><img src="assets/representative_planes.png" alt="Three representative DAPI projections from the supplied example" loading="lazy"><figcaption>Three representative DAPI projections from the supplied example</figcaption></figure>
+<p>The example above shows the top, middle and bottom DAPI projections from slide 2 of the supplied presentation. The three views use Z28–Z29, Z33–Z34 and Z38–Z39, respectively. Each saved image also retains GFP, C2 and RFP as separate channels.</p>
+<h2 id="preserve-raw-intensities-for-quantification">Preserve raw intensities for quantification</h2>
+<p>Brightness and contrast changes are unnecessary for measurement. FIJI display adjustments may help visual inspection, provided they do not alter the pixel values used for quantification. Do not apply contrast rescaling to the analysis images, convert them to 8-bit or RGB, or replace their marker channels with enhanced images.</p>
+<p>DAPI core enhancement is a separate processing step used to prepare the segmentation input. Once masks are available, all marker means are calculated from the unenhanced projected channels. Each projected pixel is the maximum of its two source slices in that channel, so “raw” here means the unmodified intensity of the saved maximum projection. Different channels can obtain their maxima from different source slices.</p>
+<p>The three representative projections were segmented independently using DAPI, then used for marker measurement and regional phenotyping. The example contains 6,847 top-plane masks, 7,253 middle-plane masks and 7,380 bottom-plane masks. There is no cross-plane matching: the total of 21,480 plane-specific masks should not be interpreted as 21,480 unique cells throughout the disc.</p>
+<h2 id="follow-the-worked-example">Follow the worked example</h2>
+<p>The next section documents segmentation in the original UVA DeepCell environment. Users with existing masks can skip to Installation and example files. The locally runnable measurement tutorial starts with the saved segmentation labels. It includes a small real four-channel TIFF crop with 416 complete nuclear masks and the full measurement table for all three planes. Follow the code blocks to measure raw intensities, select nuclei with marker gates, inspect their locations, define regions and export regional summaries.</p>
+<p>Download the complete tutorial bundle to keep the code, notebook and example data together. The original DeepCell segmentation ran on HPC; its saved labels let you follow the measurement and phenotyping steps without an HPC account. Images and recorded results are displayed on this page, while the analysis itself runs in Python or the matching notebook.</p>
+<h2 id="segment-nuclei-in-the-uva-deepcell-environment">Segment nuclei in the UVA DeepCell environment</h2>
+<p>This stage starts with the three four-channel projections prepared in FIJI. It produces nuclear label TIFFs on the original pixel grid, ready for raw-channel measurement. If you already have these masks, continue to Installation and example files below.</p>
+<p>The original enhancement and segmentation notebooks have been recovered from UVA HPC. The observed environment was Python 3.10.20, DeepCell 0.12.10, TensorFlow 2.8.4 and an NVIDIA RTX 3090. Use the existing compatible UVA DeepCell kernel for this stage. A local CPU environment used for the downstream tutorial does not establish that GPU inference can run locally.</p>
+<p>Download the <a href="Segmentation_Tutorial.ipynb">segmentation notebook</a>, the <a href="code/nuclear_segmentation.py">reusable segmentation module</a> and the <a href="segmentation_environment.txt">observed environment record</a>, or obtain them together in the complete bundle. The notebook walks through one representative plane, displays QC before saving, then provides an optional batch step. Its inference cells have no execution outputs because they have not been rerun locally. Use your own DeepCell model access in your own environment. No API key or model weights are included.</p>
+<h3 id="your-original-scripts-and-environment-settings">Your original scripts and environment settings</h3>
+<p>The original analysis used the Jupyter kernel DeepCell ICC GPU (<code>deepcell_icc_gpu</code>). Select that kernel in your existing UVA HPC Jupyter session. The recorded versions are Python 3.10.20, DeepCell 0.12.10 and TensorFlow 2.8.4, with an NVIDIA RTX 3090 GPU. The <a href="segmentation_environment.txt">environment settings file</a> and <a href="data/hpc_environment.json">machine-readable environment record</a> preserve these details.</p>
+<p>Your original scripts are included as unmodified downloads:</p>
+<ol class="steps">
+<li><a href="source_workflows/Core_Enhancement_Wing_Disc.py">Core_Enhancement_Wing_Disc.py</a>: raw DAPI inspection, core-enhancement trials and export of the three enhanced DAPI images.</li>
+<li><a href="source_workflows/Wing_Disc_Nuclear_Segmentation_Clean.py">Wing_Disc_Nuclear_Segmentation_Clean.py</a>: DeepCell diagnostics, input-scale trials, nuclear prediction, tissue filtering, boundary review and final exports.</li>
+</ol>
+<p>The corresponding <a href="source_workflows/Core_Enhancement_Wing_Disc_source.ipynb">enhancement source notebook</a> and <a href="source_workflows/Wing_Disc_Nuclear_Segmentation_Clean_source.ipynb">segmentation source notebook</a> retain the original cell sources and kernel metadata, with historical outputs removed for distribution. The <a href="data/original_script_manifest.json">script hashes</a> identify the exact recovered Python exports.</p>
+<p>These original files document the development of the analysis. Their earlier trial cells also run if the entire Python export is executed. For routine incorporation, follow the accepted steps in <code>Segmentation_Tutorial.ipynb</code> or import <code>code/nuclear_segmentation.py</code>. See the <a href="source_workflows/README.txt">source workflow notes</a> for the distinction.</p>
+<p>The original scripts expect a working directory containing these files:</p>
+<div class="code-block"><div class="code-bar"><span>text</span><button class="copy" type="button">Copy</button></div><pre><code>project_folder/
+    top_Z28-Z29_4channels.tif
+    middle_Z33-Z34_4channels.tif
+    bottom_Z38-Z39_4channels.tif
+    DAPI_Core_Enhanced/
+        enhancement_settings.json
+        top_DAPI_core_enhanced.tif
+        middle_DAPI_core_enhanced.tif
+        bottom_DAPI_core_enhanced.tif</code></pre></div>
+<p>Run enhancement before segmentation when using those original files. They contain example-specific paths, channels, dimensions and crop coordinates; adapt those values to new data. Their final segmentation export writes a new timestamped output folder.</p>
+<h3 id="record-the-active-hpc-environment">Record the active HPC environment</h3>
+<p>A complete Conda environment export, original activation command, CUDA/cuDNN versions and job-allocation settings were not recovered. The observed-version record should therefore accompany the tutorial as provenance, rather than serve as a tested installation recipe.</p>
+<p>To capture more detail, run this cell inside the DeepCell ICC GPU notebook kernel, with the tutorial folder as the working directory. The <a href="code/capture_deepcell_environment.py">environment capture helper</a> records installed package versions and TensorFlow GPU visibility. It does not run segmentation, download a model or read authentication variables.</p>
+<div class="code-block"><div class="code-bar"><span>python</span><button class="copy" type="button">Copy</button></div><pre><code>import sys
+import json
+from pathlib import Path
+sys.path.insert(0, str(Path.cwd() / &#x27;code&#x27;))
+from capture_deepcell_environment import capture_environment
+
+with Path(&#x27;deepcell_environment_capture.json&#x27;).open(&#x27;x&#x27;) as handle:
+    json.dump(capture_environment(), handle, indent=2, default=str)</code></pre></div>
+<p>Keep that JSON with the run settings. The tutorial uses your own existing DeepCell model access in the HPC environment; keys are not stored in the distributed files.</p>
+<h3 id="prepare-the-segmentation-input">Prepare the segmentation input</h3>
+<p>The accepted enhancement uses Gaussian smoothing at sigma 0.5 pixels, subtraction of a broad Gaussian background at sigma 12 pixels, and a nonnegative scale-normalized negative Laplacian of Gaussian response at sigma 1.8 pixels. The module creates a separate floating-point image; the original fluorescence channels remain the measurement source.</p>
+<div class="code-block"><div class="code-bar"><span>python</span><button class="copy" type="button">Copy</button></div><pre><code>from nuclear_segmentation import enhance_dapi
+
+# raw is your four-channel CYX maximum projection.
+dapi = raw[2]  # C3 DAPI, zero-based channel index
+core = enhance_dapi(dapi)</code></pre></div>
+<p>The pretrained application was loaded with <code>NuclearSegmentation.from_version(&#x27;1.1&#x27;)</code>. The accepted input was enlarged threefold with linear interpolation and passed with <code>image_mpp=app.model_mpp</code>, where the recorded model pixel size was 0.65 µm. Predicted labels were resized back with nearest-neighbor interpolation. This was an empirical adjustment of apparent nuclear size, not a change in the microscope calibration. Physical measurements still use 0.5546 µm per original pixel. New images require their own segmentation review and parameter selection.</p>
+<div class="code-block"><div class="code-bar"><span>python</span><button class="copy" type="button">Copy</button></div><pre><code>from nuclear_segmentation import load_nuclear_model, predict_nuclei
+
+# Run these lines in the compatible DeepCell environment.
+app = load_nuclear_model()
+initial_labels = predict_nuclei(core, app)</code></pre></div>
+<h3 id="filter-background-detections-and-inspect-the-result">Filter background detections and inspect the result</h3>
+<p>A tissue mask comes from raw DAPI smoothed at sigma 12 pixels and thresholded at 0.5× Otsu, followed by closing with a 32 pixel disk, removal of components smaller than 5,000 pixels and hole filling. A nucleus must have at least 50% overlap with tissue.</p>
+<p>The boundary check examines nuclei intersecting a 10 pixel band around the tissue edge. It compares median nuclear DAPI with median local background in a 2–5 pixel ring, excluding other detected nuclei. With at least 10 ring pixels, a ratio below 1.2 flags the nucleus for exclusion. Unevaluable nuclei remain. The original flags were visually reviewed before acceptance. The helper applies the recorded rule and returns per-label QC records; review the exclusions on every new specimen before phenotyping.</p>
+<div class="code-block"><div class="code-bar"><span>python</span><button class="copy" type="button">Copy</button></div><pre><code>from nuclear_segmentation import filter_nuclei
+
+labels, tissue, summary, boundary_qc = filter_nuclei(dapi, initial_labels)
+print(summary)</code></pre></div>
+<figure><img src="assets/middle_hpc_segmentation.png" alt="Saved middle-plane preview from the original UVA HPC segmentation run" loading="lazy"><figcaption>Saved middle-plane preview from the original UVA HPC segmentation run</figcaption></figure>
+<p>This is the saved preview from the original HPC run, not a new local inference result. Additional original previews are available for the <a href="assets/top_hpc_segmentation.png">top plane</a> and <a href="assets/bottom_hpc_segmentation.png">bottom plane</a>. The recovered run record contains these counts:</p>
+<ol class="steps">
+<li>Top: 31,580 initial detections → 7,050 after tissue overlap → 203 boundary exclusions → 6,847 retained nuclei.</li>
+<li>Middle: 32,347 initial detections → 7,445 after tissue overlap → 192 boundary exclusions → 7,253 retained nuclei. This plane reused its previously reviewed result.</li>
+<li>Bottom: 32,161 initial detections → 7,546 after tissue overlap → 166 boundary exclusions → 7,380 retained nuclei.</li>
+</ol>
+<p>See the <a href="data/segmentation_settings.json">original settings and counts</a> and <a href="data/enhancement_settings.json">enhancement settings</a>. These counts document the example; they are not an accuracy estimate against ground-truth annotations.</p>
+<h3 id="incorporate-segmentation-into-your-own-pipeline">Incorporate segmentation into your own pipeline</h3>
+<p>For a plane with reviewed settings, the convenience function creates a new output folder and saves enhanced DAPI, unfiltered predictions, final nuclear labels, the tissue mask, boundary QC records and settings. Inspect these outputs before downstream analysis. The segmentation notebook shows how to save the already computed representative-plane arrays without repeating inference.</p>
+<div class="code-block"><div class="code-bar"><span>python</span><button class="copy" type="button">Copy</button></div><pre><code>from nuclear_segmentation import save_segmentation
+
+# Requires your own full-plane DAPI and a loaded DeepCell application.
+labels, run_record = save_segmentation(
+    output_dir=&#x27;results/new_run/middle&#x27;,
+    plane=&#x27;middle&#x27;, raw_dapi=dapi, app=app,
+)</code></pre></div>
+<p>Keep the final YX labels paired with the unenhanced CYX projection. The next part of this tutorial measures all raw channels within those labels. Keep plane names in the exported records because label IDs are unique only within a plane.</p>
+<h3 id="what-has-been-verified-locally">What has been verified locally</h3>
+<p>CPU validation reproduced the archived middle-plane enhanced DAPI pixel for pixel and reproduced all three archived tissue masks pixel for pixel. The recalculated middle Otsu threshold differed by approximately 0.00049 intensity units in the newer local libraries, with no change to the tissue mask. Retained mask counts match the recovered record, and all archived boundary exclusions are absent from the saved final masks.</p>
+<p>DeepCell inference and the complete filtering chain starting from unfiltered GPU predictions have not been rerun locally. The <a href="data/segmentation_recovery_validation.json">verification report</a> records the actual checks and local library versions. The executable cells in the main notebook below cover measurement and phenotyping from saved masks.</p>
+<h2 id="use-the-interactive-interface">Use the interactive interface</h2>
+<p><a href="interface/index.html">Open the Quantitative Tissue Phenotyping explorer</a> to use the working interface with the wing-disc example. It is also included in the complete downloadable tutorial bundle. Extract the bundle and open <code>interface/index.html</code> in a desktop browser such as Chrome, keeping <code>plotly.min.js</code> in the same folder. The example interface runs locally and does not require an HPC account, Python installation or DeepCell API key.</p>
+<p>The interface contains the example raw image pixels, retained nuclear outlines and per-nucleus measurements. It supports marker gating, raw/arcsinh displays, spatial inspection, freehand anatomical regions and regional counts. Changing display contrast does not change measured intensities. It uses the saved masks; it does not perform new segmentation in the browser.</p>
+<ol class="steps">
+<li>Select the top, middle or bottom plane, or All Planes, and choose the three marker axes.</li>
+<li>Set marker thresholds and inspect the selected population in the scatterplots and paired image views. Enable gate coloring to see passing and failing nuclei on the tissue.</li>
+<li>Choose Freehand draw, trace the original or ectopic pouch on an image, enter a region name and select Save region. The region table shows total masks, passing masks and their percentage for the current gate.</li>
+<li>Export thresholds JSON, regions JSON and region counts CSV. Browser storage is convenient, but exported files preserve settings when moving computers or folders.</li>
+<li>Use the exported JSON files in the Python measurement and phenotyping tutorial below to reproduce the gate and regional summaries.</li>
+</ol>
+<p>This distributed explorer is preloaded with the wing-disc example. It does not currently offer a general image-upload workflow. Users can reuse the Python segmentation, measurement and counting modules with their own images now; showing a new dataset in this interface currently requires adapting the asset builder and rebuilding the page. A general data-import interface remains a development step.</p>
+<p>The interface embeds full-resolution images, so its HTML is large and may take time to open. The downloadable bundle includes those image pixels for the worked example, as well as its measurements. It is a local, shareable demo; this tutorial has not been published online.</p>
+<h2 id="run-order-and-download-instructions">Run order and download instructions</h2>
+<p>The download includes a <a href="START_HERE.html">step-by-step start guide</a>, also supplied as <code>README.md</code> and <code>START_HERE.txt</code>. It explains which script to run first, the required inputs and generated outputs at every stage, expected results for the example, and the separate route for your own images. Start there after extracting the bundle. The browser example and local measurement example do not require a new DeepCell run.</p>
+<h2 id="installation-and-example-files">Installation and example files</h2>
+<p>Use Python 3.10 or newer. Extract the bundle, open a terminal in its folder, and install the measurement and plotting libraries. JupyterLab is needed only if you want to run the notebook.</p>
+<div class="code-block"><div class="code-bar"><span>bash</span><button class="copy" type="button">Copy</button></div><pre><code>python -m venv .venv
+source .venv/bin/activate
+python -m pip install numpy tifffile matplotlib jupyterlab
+python -m jupyterlab</code></pre></div>
+<p>On Windows, activate the environment with <code>.venv\Scripts\activate</code>. Open <code>Guided_Tutorial.ipynb</code> in JupyterLab and run the cells in order. The code also works in a Python script. Keep the <code>data</code> and <code>code</code> folders beside the notebook.</p>
+<p>The small TIFF has CYX axes: channel, row, column. Its label TIFF has YX axes, with zero for background and a positive integer for each nucleus. Channel assignments are specific to this example and must be checked on new data.</p>
+<div class="code-block"><div class="code-bar"><span>python</span><button class="copy" type="button">Copy</button></div><pre><code>from pathlib import Path
+import csv
+import json
+import sys
+
+# Find this tutorial whether opened from its own folder or the project root.
+candidates = [Path.cwd(), *Path.cwd().parents]
+candidates += [p / &#x27;Writeup/tutorial&#x27; for p in list(candidates)]
+TUTORIAL = next(p for p in candidates
+                if (p / &#x27;data/crop_manifest.json&#x27;).exists())
+sys.path.insert(0, str(TUTORIAL / &#x27;code&#x27;))
+RESULTS = TUTORIAL / &#x27;results&#x27;
+RESULTS.mkdir(exist_ok=True)
+
+import numpy as np
+import tifffile
+import matplotlib.pyplot as plt
+from measure_nuclei import measure_nuclei
+from phenotype_analysis import (
+    read_measurements, gate_nuclei, count_regions, write_csv,
+)
+from tutorial_plots import (
+    plot_mask_qc, plot_marker_gate,
+    plot_spatial_gate, plot_region_summary,
+)
+
+channel_names = [&#x27;C1 GFP&#x27;, &#x27;C2 unknown&#x27;, &#x27;C3 DAPI&#x27;, &#x27;C4 RFP&#x27;]
+pixel_size_um = 0.5546006944444444
+print(&#x27;Example channels:&#x27;, &#x27;, &#x27;.join(channel_names))</code></pre></div>
+<pre class="output" aria-label="Executed output"><code>Example channels: C1 GFP, C2 unknown, C3 DAPI, C4 RFP
+</code></pre>
+<h2 id="inspect-images-and-nuclear-labels">Inspect images and nuclear labels</h2>
+<p>We first load a real middle-plane crop. Both inputs use the original pixel grid, so label pixels select the corresponding raw pixels directly. The crop is 220 columns by 180 rows and contains four channels.</p>
+<p>The example retains only nuclei whose entire original mask fits inside this crop. Partial masks were removed to avoid teaching measurement on truncated nuclei. Pixel intensities remain unchanged. The saved label IDs come from the original full-plane segmentation.</p>
+<div class="code-block"><div class="code-bar"><span>python</span><button class="copy" type="button">Copy</button></div><pre><code>raw = tifffile.imread(TUTORIAL / &#x27;data/middle_crop_raw.tif&#x27;)
+labels = tifffile.imread(TUTORIAL / &#x27;data/middle_crop_labels.tif&#x27;)
+assert raw.shape[1:] == labels.shape
+assert raw.shape[0] == len(channel_names)
+
+print(&#x27;Raw:&#x27;, raw.shape, raw.dtype)
+print(&#x27;Labels:&#x27;, labels.shape, labels.dtype)
+print(&#x27;Complete nuclei:&#x27;, len(np.unique(labels[labels &gt; 0])))
+
+fig = plot_mask_qc(raw[2], labels, pixel_size_um)
+fig.savefig(RESULTS / &#x27;mask_qc.png&#x27;, dpi=180)
+plt.show()</code></pre></div>
+<pre class="output" aria-label="Executed output"><code>Raw: (4, 180, 220) uint16
+Labels: (180, 220) uint32
+Complete nuclei: 416
+</code></pre>
+<figure><img src="results/mask_qc.png" alt="mask qc" loading="lazy"><figcaption>Output from the code immediately above.</figcaption></figure>
+<p>The two panels share the same contrast limits. Cyan outlines show the retained labels, and the scale bars are 10 µm. Inspect weak signals, crowded nuclei, splits and merges before accepting measurements. A plausible image does not establish segmentation accuracy.</p>
+<h2 id="measure-raw-channel-intensities">Measure raw channel intensities</h2>
+<p>For each positive label, calculate area, centroid and the arithmetic mean of each original channel. We quantify raw fluorescence rather than the enhanced DAPI used during segmentation. The function keeps the original label IDs.</p>
+<p>Centroids use zero-based crop pixels. Nuclear means and areas for these complete masks match their corresponding full-plane measurements; centroid coordinates differ by the crop offset.</p>
+<div class="code-block"><div class="code-bar"><span>python</span><button class="copy" type="button">Copy</button></div><pre><code>crop_rows = measure_nuclei(
+    raw, labels, channel_names, pixel_size_um=pixel_size_um,
+)
+crop_rows = [dict(plane=&#x27;middle_crop&#x27;, **row) for row in crop_rows]
+write_csv(RESULTS / &#x27;crop_measurements.csv&#x27;, crop_rows, list(crop_rows[0]))
+
+print(f&#x27;Measured {len(crop_rows):,} complete nuclear masks&#x27;)
+print(&#x27;mask_id  area_px  GFP_mean  DAPI_mean&#x27;)
+for row in crop_rows[:5]:
+    print(f&quot;{row[&#x27;mask_id&#x27;]:7d}  {row[&#x27;area_px&#x27;]:7d}  &quot;
+          f&quot;{row[&#x27;C1 GFP_mean&#x27;]:8.1f}  {row[&#x27;C3 DAPI_mean&#x27;]:9.1f}&quot;)</code></pre></div>
+<pre class="output" aria-label="Executed output"><code>Measured 416 complete nuclear masks
+mask_id  area_px  GFP_mean  DAPI_mean
+  17415       21   13477.5    16396.5
+  17420       26   17773.3    22174.3
+  17435       37   17122.8    23295.5
+  17436       63   20739.5    30223.0
+  17437       51   17869.2    19678.8
+</code></pre>
+<p>For your own images, replace the TIFF paths and channel names, and supply your measured XY calibration. A 2D label mask must align with a CYX raw image. For anisotropic XY pixels, adapt the physical area conversion to use separate x and y spacings.</p>
+<h2 id="load-the-full-example-dataset">Load the full example dataset</h2>
+<p>We now load the saved measurements for all three planes. This lets the Python example reproduce the full marker-selection analysis without loading full-plane TIFFs. The browser interface separately includes embedded full-resolution image pixels. Every row represents one retained nuclear mask. Use plane plus mask ID as the joint identifier.</p>
+<p>Top, middle and bottom are independent 2D projections. Their combined count is a number of plane-specific masks, not a count of unique nuclei throughout the original 3D disc.</p>
+<div class="code-block"><div class="code-bar"><span>python</span><button class="copy" type="button">Copy</button></div><pre><code>rows = read_measurements(TUTORIAL / &#x27;data/nuclear_channel_means.csv&#x27;)
+for plane in [&#x27;top&#x27;, &#x27;middle&#x27;, &#x27;bottom&#x27;]:
+    print(f&quot;{plane:6s} {sum(r[&#x27;plane&#x27;] == plane for r in rows):6,d} masks&quot;)
+print(f&quot;total  {len(rows):6,d} masks&quot;)
+
+# Verify complete crop measurements against the full middle-plane table.
+full_by_id = {r[&#x27;mask_id&#x27;]: r for r in rows if r[&#x27;plane&#x27;] == &#x27;middle&#x27;}
+for row in crop_rows:
+    full = full_by_id[row[&#x27;mask_id&#x27;]]
+    assert row[&#x27;area_px&#x27;] == full[&#x27;area_px&#x27;]
+    for name in channel_names:
+        assert np.isclose(row[name + &#x27;_mean&#x27;], full[name + &#x27;_mean&#x27;])
+print(&#x27;All complete crop areas and means match the full-plane table.&#x27;)</code></pre></div>
+<pre class="output" aria-label="Executed output"><code>top     6,847 masks
+middle  7,253 masks
+bottom  7,380 masks
+total  21,480 masks
+All complete crop areas and means match the full-plane table.
+</code></pre>
+<h2 id="select-nuclei-using-marker-gates">Select nuclei using marker gates</h2>
+<p>We select nuclei using GFP, RFP and C2. Every selected channel must meet or exceed its cutoff. The example uses explicitly chosen demonstration cutoffs in raw intensity units. These values illustrate the code and do not establish marker specificity or biological positivity.</p>
+<p>Thresholds are stored by plane and channel, allowing different cutoffs when justified. Changing a display to arcsinh should not change these raw cutoffs.</p>
+<div class="code-block"><div class="code-bar"><span>python</span><button class="copy" type="button">Copy</button></div><pre><code>settings = json.loads((TUTORIAL / &#x27;data/demo_thresholds.json&#x27;).read_text())
+channels = settings[&#x27;selectedMarkers&#x27;]
+cutoffs = settings[&#x27;thresholdsRaw&#x27;]
+passing = gate_nuclei(rows, channels, cutoffs)
+selected = [row for row, keep in zip(rows, passing) if keep]
+
+print(&#x27;Middle-plane raw cutoffs:&#x27;)
+for channel in channels:
+    print(f&quot;  {channel}: {cutoffs[&#x27;middle&#x27;][channel]:,}&quot;)
+print(f&quot;Selected: {len(selected):,} / {len(rows):,} &quot;
+      f&quot;({100 * len(selected) / len(rows):.1f}%)&quot;)
+
+fig = plot_marker_gate(rows, passing, channels, cutoffs)
+fig.savefig(RESULTS / &#x27;marker_gate.png&#x27;, dpi=180)
+plt.show()</code></pre></div>
+<pre class="output" aria-label="Executed output"><code>Middle-plane raw cutoffs:
+  C1 GFP: 10,000
+  C4 RFP: 10,000
+  C2 unknown: 5,000
+Selected: 5,222 / 21,480 (24.3%)
+</code></pre>
+<figure><img src="results/marker_gate.png" alt="marker gate" loading="lazy"><figcaption>Output from the code immediately above.</figcaption></figure>
+<p>Colored points pass all three criteria, even though each panel displays only two channels. Gray points show the full retained population underneath. Dashed lines mark the raw cutoffs for the plotted channels. Colors identify planes.</p>
+<p>To reuse an explorer selection, replace <code>demo_thresholds.json</code> with its exported threshold JSON. The code reads <code>selectedMarkers</code> and <code>thresholdsRaw</code>, independent of the browser display scale.</p>
+<h2 id="inspect-selected-nuclei-in-space">Inspect selected nuclei in space</h2>
+<p>A marker gate should also be checked against the tissue. We map the passing nuclei back to their centroids in the middle plane. This view uses original image pixels, so y increases downward.</p>
+<p>This plot is calculated from the same <code>passing</code> flags as the marker plots. It does not redefine the selected population.</p>
+<div class="code-block"><div class="code-bar"><span>python</span><button class="copy" type="button">Copy</button></div><pre><code>fig = plot_spatial_gate(rows, passing, plane=&#x27;middle&#x27;)
+fig.savefig(RESULTS / &#x27;spatial_gate.png&#x27;, dpi=180)
+plt.show()
+
+middle_selected = sum(keep and row[&#x27;plane&#x27;] == &#x27;middle&#x27;
+                      for row, keep in zip(rows, passing))
+print(f&#x27;Middle-plane passing masks: {middle_selected:,}&#x27;)</code></pre></div>
+<pre class="output" aria-label="Executed output"><code>Middle-plane passing masks: 1,740
+</code></pre>
+<figure><img src="results/spatial_gate.png" alt="spatial gate" loading="lazy"><figcaption>Output from the code immediately above.</figcaption></figure>
+<h2 id="draw-and-export-freehand-regions">Draw and export freehand regions</h2>
+<p>In the phenotype explorer, select a plane and image channel, choose Freehand draw, trace a region, then name and save it. Select Inspect / pan when you want to move around the image. Regions appear on both paired views.</p>
+<figure><img src="assets/freehand_regions.png" alt="Saved freehand regions from the supplied presentation" loading="lazy"><figcaption>Saved freehand regions from the supplied presentation</figcaption></figure>
+<p>The image above shows the existing Original pouch and Ectopic pouch boundaries from slide 7 of the supplied presentation. It illustrates the drawing workflow. Its historical gate differs from this runnable demonstration.</p>
+<p>Export regions JSON to preserve the exact polygon points. Export thresholds to preserve the gate; the current threshold export also includes saved regions. A mask belongs to a region when its centroid is inside or on the boundary. Overlapping regions count shared nuclei independently.</p>
+<p>For a reproducible example without the original freehand exports, we supply two rectangles with explicit coordinates. They are labeled Demo left rectangle and Demo right rectangle and do not claim anatomical boundaries.</p>
+<div class="code-block"><div class="code-bar"><span>python</span><button class="copy" type="button">Copy</button></div><pre><code>region_export = json.loads((TUTORIAL / &#x27;data/demo_regions.json&#x27;).read_text())
+assert region_export[&#x27;dataset&#x27;] == settings[&#x27;dataset&#x27;]
+regions = region_export[&#x27;regions&#x27;]
+
+fig = plot_spatial_gate(rows, passing, plane=&#x27;middle&#x27;, regions=regions)
+fig.savefig(RESULTS / &#x27;demo_regions.png&#x27;, dpi=180)
+plt.show()</code></pre></div>
+<figure><img src="results/demo_regions.png" alt="demo regions" loading="lazy"><figcaption>Output from the code immediately above.</figcaption></figure>
+<p>For your own freehand analysis, substitute the JSON exported from the explorer. Keep centroid and polygon coordinates in the same original pixel system. A resized screenshot cannot replace the saved coordinate list.</p>
+<h2 id="quantify-each-region">Quantify each region</h2>
+<p>For each region, the denominator is all retained masks inside it and the numerator is the subset passing the active gate. We report the count and percentage together so the denominator remains visible. An empty region has no defined percentage.</p>
+<div class="code-block"><div class="code-bar"><span>python</span><button class="copy" type="button">Copy</button></div><pre><code>summary = count_regions(rows, passing, regions)
+print(&#x27;Region                    Total   Passing   Percent&#x27;)
+for region in summary:
+    print(f&quot;{region[&#x27;region&#x27;]:25s} {region[&#x27;total_masks&#x27;]:5,d}   &quot;
+          f&quot;{region[&#x27;above_threshold_masks&#x27;]:5,d}    &quot;
+          f&quot;{region[&#x27;above_threshold_percent&#x27;]:.1f}%&quot;)
+
+fig = plot_region_summary(summary)
+fig.savefig(RESULTS / &#x27;region_summary.png&#x27;, dpi=180)
+plt.show()</code></pre></div>
+<pre class="output" aria-label="Executed output"><code>Region                    Total   Passing   Percent
+Demo left rectangle       3,693   1,334    36.1%
+Demo right rectangle      1,143     312    27.3%
+</code></pre>
+<figure><img src="results/region_summary.png" alt="region summary" loading="lazy"><figcaption>Output from the code immediately above.</figcaption></figure>
+<p>These plotted counts are freshly calculated from the demonstration rectangles and cutoffs. They can be reproduced by running this notebook.</p>
+<p>The supplied presentation also contains the historical anatomical-region table below. Original pouch had 944 passing masks among 2,691 total, while Ectopic pouch had 128 among 1,408. Those screenshot results require their original region geometry and threshold export to reproduce and should not be confused with the demonstration above.</p>
+<figure><img src="assets/historical_counts.png" alt="Historical anatomical-region counts from the supplied presentation" loading="lazy"><figcaption>Historical anatomical-region counts from the supplied presentation</figcaption></figure>
+<p>Regional percentages describe the image and selected thresholds. Compare independent biological samples and apply a stated selection rule before interpreting a biological difference.</p>
+<h2 id="export-results-for-another-pipeline">Export results for another pipeline</h2>
+<p>Save all nuclear measurements with their gate flag, the selected nuclei, and the region summary. Retain the raw thresholds and polygon coordinates alongside the tables so the analysis can be repeated.</p>
+<div class="code-block"><div class="code-bar"><span>python</span><button class="copy" type="button">Copy</button></div><pre><code>write_csv(RESULTS / &#x27;gated_nuclei.csv&#x27;,
+          [dict(row, passes_gate=keep) for row, keep in zip(rows, passing)],
+          list(rows[0]) + [&#x27;passes_gate&#x27;])
+write_csv(RESULTS / &#x27;selected_nuclei.csv&#x27;, selected, list(rows[0]))
+write_csv(RESULTS / &#x27;region_counts.csv&#x27;, summary, list(summary[0]))
+
+analysis_settings = dict(
+    selected_channels=channels,
+    thresholds_raw=cutoffs,
+    regions=regions,
+    total_masks=len(rows),
+    passing_masks=len(selected),
+)
+(RESULTS / &#x27;analysis_settings.json&#x27;).write_text(
+    json.dumps(analysis_settings, indent=2) + &#x27;\n&#x27;
+)
+print(&#x27;Saved gated_nuclei.csv, selected_nuclei.csv, region_counts.csv&#x27;)
+print(&#x27;Saved analysis_settings.json&#x27;)</code></pre></div>
+<pre class="output" aria-label="Executed output"><code>Saved gated_nuclei.csv, selected_nuclei.csv, region_counts.csv
+Saved analysis_settings.json
+</code></pre>
+<h2 id="incorporate-the-functions-into-your-own-analysis">Incorporate the functions into your own analysis</h2>
+<p>The two processing modules can be copied beside an analysis script and imported directly. <code>measure_nuclei</code> accepts image arrays and returns records. <code>gate_nuclei</code> accepts records and raw thresholds and returns one boolean per record. <code>count_regions</code> combines those records, flags and polygon geometries into summaries.</p>
+<p>For your first adaptation, change only input paths, channel names, calibration and matching threshold/region exports. Preserve the original raw channels. Keep each mask ID paired with its plane. The measurement CSV does not contain a dataset identifier, so pair it with exports from the same source images and masks.</p>
+<p>The standalone command-line tool writes the same types of outputs without a notebook:</p>
+<div class="code-block"><div class="code-bar"><span>bash</span><button class="copy" type="button">Copy</button></div><pre><code>python code/phenotype_analysis.py   --measurements data/nuclear_channel_means.csv   --settings data/demo_thresholds.json   --regions data/demo_regions.json   --output-dir results/command_line</code></pre></div>
+<p>Run that command from the tutorial folder. Gating and counting alone use Python&#x27;s standard library. TIFF measurement requires NumPy and tifffile, while plots require Matplotlib.</p>
+<h2 id="segmentation-provenance-and-session-information">Segmentation provenance and session information</h2>
+<p>The original labels were generated on UVA HPC on 7 October 2026. The accepted workflow smoothed DAPI at sigma 0.5 pixels, subtracted a sigma 12 pixel background, and calculated a nonnegative scale-normalized negative LoG response at sigma 1.8 pixels. DeepCell received an input enlarged threefold, using <code>image_mpp=model_mpp</code>; labels were mapped back by nearest-neighbor interpolation. Tissue overlap and a reviewed boundary-signal rule removed background detections.</p>
+<figure><img src="assets/core_enhancement.png" alt="Raw DAPI and core response from the original enhancement trial" loading="lazy"><figcaption>Raw DAPI and core response from the original enhancement trial</figcaption></figure>
+<p>This image comes from slide 3 of the supplied presentation. It illustrates the recorded enhancement, rather than a new segmentation run. The original HPC notebooks and model settings have now been recovered. The separate <a href="Segmentation_Tutorial.ipynb">segmentation notebook</a> reconstructs the accepted workflow for a compatible DeepCell environment and is deliberately unexecuted locally. This measurement notebook reproduces calculations from saved masks and all demonstration gates, spatial plots and regional summaries. The <a href="data/segmentation_recovery_validation.json">CPU verification report</a> records which saved intermediate images were reproduced locally.</p>
+<div class="code-block"><div class="code-bar"><span>python</span><button class="copy" type="button">Copy</button></div><pre><code>import platform
+import matplotlib
+print(&#x27;Python:&#x27;, platform.python_version())
+print(&#x27;NumPy:&#x27;, np.__version__)
+print(&#x27;tifffile:&#x27;, tifffile.__version__)
+print(&#x27;Matplotlib:&#x27;, matplotlib.__version__)</code></pre></div>
+<pre class="output" aria-label="Executed output"><code>Python: 3.12.14
+NumPy: 2.3.5
+tifffile: 2026.10.15
+Matplotlib: 3.11.2
+</code></pre>
+<footer>Quantitative Tissue Phenotyping · Yang Cheng · University of Virginia · With assistance from ChatGPT (OpenAI)</footer>
+</main><aside aria-label="On this page"><div class="toc"><h2>On this page</h2><ol><li><a href="#applications-and-scope">Applications and scope</a></li><li><a href="#why-this-pipeline-is-useful">Why this pipeline is useful</a></li><li><a href="#what-the-pipeline-measures">What the pipeline measures</a></li><li><a href="#nuclear-and-whole-cell-segmentation">Nuclear and whole-cell segmentation</a></li><li><a href="#start-with-the-original-image-stack">Start with the original image stack</a></li><li><a href="#prepare-three-representative-projections-in-fiji">Prepare three representative projections in FIJI</a></li><li><a href="#preserve-raw-intensities-for-quantification">Preserve raw intensities for quantification</a></li><li><a href="#follow-the-worked-example">Follow the worked example</a></li><li><a href="#segment-nuclei-in-the-uva-deepcell-environment">Segment nuclei in the UVA DeepCell environment</a></li><li><a href="#use-the-interactive-interface">Use the interactive interface</a></li><li><a href="#run-order-and-download-instructions">Run order and download instructions</a></li><li><a href="#installation-and-example-files">Installation and example files</a></li><li><a href="#inspect-images-and-nuclear-labels">Inspect images and nuclear labels</a></li><li><a href="#measure-raw-channel-intensities">Measure raw channel intensities</a></li><li><a href="#load-the-full-example-dataset">Load the full example dataset</a></li><li><a href="#select-nuclei-using-marker-gates">Select nuclei using marker gates</a></li><li><a href="#inspect-selected-nuclei-in-space">Inspect selected nuclei in space</a></li><li><a href="#draw-and-export-freehand-regions">Draw and export freehand regions</a></li><li><a href="#quantify-each-region">Quantify each region</a></li><li><a href="#export-results-for-another-pipeline">Export results for another pipeline</a></li><li><a href="#incorporate-the-functions-into-your-own-analysis">Incorporate the functions into your own analysis</a></li><li><a href="#segmentation-provenance-and-session-information">Segmentation provenance and session information</a></li></ol><p><a href="code/nuclear_segmentation.py" download>Segmentation source</a><br><a href="code/measure_nuclei.py" download>Measurement source</a><br><a href="code/phenotype_analysis.py" download>Gating and region source</a><br><a href="code/tutorial_plots.py" download>Plotting source</a></p></div></aside></div>
+<script src="tutorial.js"></script></body></html>
